@@ -1,113 +1,63 @@
-# Strong vs Weak Query Classifier
+# Adaptive Query Reformation
 
-This project trains a DistilRoBERTa-based classifier to label user queries as STRONG (well-formed) or WEAK (ill-formed).
-It also includes a separate inference script so you can classify any query from the command line.
+This project builds an end-to-end NLP pipeline that takes a user query, checks if it is **strong** or **weak**, and then decides how much help the query needs.
+
+- **Weak query** → fetch related terms from Google Trends and rewrite the query with a T5 model.  
+- **Strong query** → show that it is strong and keep it as is (no extra rewriting for now).
+
+Everything runs in a **Streamlit** web app.
+
+```
+streamlit run app.py
+```
+or 
+```
+python3 -m streamlit run app.py
+```
 
 ---
 
-## 📊 Dataset (Required)
+## 1. Overall flow
 
-This project uses the Google Query Wellformedness (QWF) dataset:
-
-Dataset link:  
-https://github.com/google-research-datasets/query-wellformedness
-
-Download and extract the ZIP. You must place:
-
-```
-train.tsv
-dev.tsv
-test.tsv
-README.md
-```
-
-inside a folder named exactly:
-
-```
-query-wellformedness-master
-```
-
-The folder name must match exactly, otherwise the training script will not find the dataset.
+1. The user types a query in the Streamlit app (`app.py`).
+2. A **DistilRoBERTa classifier** (`infer.py`) labels the query as `WEAK` or `STRONG`.
+3. If the query is **WEAK**:
+   - `get_context_from_api.py` / `Trends.py` call **SerpApi Google Trends**.
+   - The “top related” queries become context keywords.
+   - These keywords are passed to a **T5 query rewriter**, which generates clearer, more specific versions of the query.
+   - The UI shows a red “Weak query” card and the rewritten questions.
+4. If the query is **STRONG**:
+   - The UI shows a green “Strong query” card.
+   - The query is treated as already well-formed (no extra rewriting in the current version).
 
 ---
 
-## 📁 Project Folder Structure
+## 2. Project structure
 
-Your project directory should look like this:
+Typical layout of the repo:
 
-```
-project/
+```text
+adaptive-query-reformation/
 │
-├── infer.py
-├── qw_strong_weak_classifier.py
+├── app.py                      # Streamlit app (main entry point)
+├── get_context_from_api.py     # Google Trends context using SerpApi
+├── Trends.py                   # Core trends helper functions + test harness
 │
-├── query-wellformedness-master/
+├── qw_strong_weak_classifier.py # Training script for DistilRoBERTa classifier
+├── infer.py                     # Inference for classifier (CLI + used in app)
+│
+├── query-wellformedness-master/ # QWF dataset (NOT tracked in git)
 │   ├── train.tsv
 │   ├── dev.tsv
 │   ├── test.tsv
 │   └── README.md
 │
-└── output/           # automatically created after training
-```
-
----
-
-## 🏋️‍♂️ Training the Model
-
-Run:
-
-```bash
-python3 qw_strong_weak_classifier.py
-```
-
-This script will:
-
-- Load & preprocess the QWF dataset  
-- Fine-tune DistilRoBERTa  
-- Apply class balancing  
-- Tune a probability threshold for identifying weak queries  
-- Evaluate performance on dev/test sets  
-- Save the best-performing model inside:
-
-```
-output/distilroberta/
-```
-
----
-
-## 🔍 Running Inference
-
-After training, classify any query using:
-
-```bash
-python3 infer.py --text "weather tomorrow"
-```
-
-Example output:
-
-```
-=== Query Classification ===
-Text      : weather tomorrow
-Prediction: WEAK
-Weak prob : 0.9825
-Threshold : 0.36
-============================
-```
-
----
-
-## 📦 Files Included
-
-| File | Description |
-|------|-------------|
-| qw_strong_weak_classifier.py | Training pipeline |
-| infer.py | Inference script |
-| query-wellformedness-master/ | Required dataset folder |
-| output/ | Contains saved model (after training) |
-
----
-
-## 📝 Notes
-
-- The model `.safetensors` file is large — do NOT commit `output/` to GitHub.
-- Add `output/` and `query-wellformedness-master/` to `.gitignore`.
+├── t5-query-rewriter-final/    # T5 query rewriter model folder
+│   └── ...                     # tokenizer + model weights
+│
+└── output/                     # Saved classifier model (NOT tracked in git)
+    └── distilroberta/
+        ├── config.json
+        ├── tokenizer.json
+        ├── model.safetensors
+        └── routing_threshold.json
