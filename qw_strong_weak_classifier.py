@@ -7,7 +7,7 @@ Fine-tunes DistilRoBERTa + trains a TF-IDF+SVM baseline.
 """
 
 # ------------ Imports ------------
-import os, json
+import json
 import numpy as np
 import pandas as pd
 import torch
@@ -28,6 +28,9 @@ from sklearn.svm import LinearSVC
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils.class_weight import compute_class_weight
 import joblib
+import os
+os.environ["USE_TF"] = "0"
+os.environ["TRANSFORMERS_NO_TF"] = "1"
 
 from transformers import (
     AutoTokenizer,

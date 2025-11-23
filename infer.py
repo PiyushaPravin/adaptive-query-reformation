@@ -3,6 +3,10 @@ import argparse
 import json
 import torch
 from pathlib import Path
+import os
+os.environ["USE_TF"] = "0"
+os.environ["TRANSFORMERS_NO_TF"] = "1"
+
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 OUTDIR = Path("output/distilroberta")
